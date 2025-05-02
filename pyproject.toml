@@ -33,6 +33,7 @@ dev = [
     "ruff",     # linting
     "types-PyYAML", 
     "types-tabulate",
+    "versioneer",
 ]
 test = [
     "intake"
@@ -48,11 +49,11 @@ changelog = "https://github.com/ACCESS-NRI/access-intake-utils/blob/main/CHANGEL
 homepage = "https://github.com/ACCESS-NRI/access-intake-utils"
 
 [build-system]
-build-backend = "setuptools.build_meta"
 requires = [
   "setuptools >= 61.0.0",
-  "versioneer[toml]",
+  "versioneer[toml]==0.29",
 ]
+build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 where = ["src"]
