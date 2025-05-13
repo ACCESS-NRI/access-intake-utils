@@ -3,10 +3,12 @@ from pathlib import Path
 
 import intake
 import pytest
+import xarray as xr
 
 import access_intake_utils
 from access_intake_utils.chunking import (
     ChunkingWarning,
+    _get_file_handles,
     get_disk_chunks,
     validate_chunkspec,
 )
@@ -220,13 +222,11 @@ def test_validate_chunkspec_integer_multiple_warnings(
             {"time": 120, "xt_ocean": 1, "yt_ocean": 1, "nv": 1},
             {"time": 120, "xt_ocean": 1, "yt_ocean": 1, "nv": 2},
             {
-                _here
-                / "data/output000/ocean/ocean_month.nc": {
+                _here / "data/output000/ocean/ocean_month.nc": {
                     "TLAT": {"ni": 1, "nj": 1},
                     "TLON": {"ni": 1, "nj": 1},
                 },
-                _here
-                / "data/output000/ice/OUTPUT/iceh.1900-01.nc": {
+                _here / "data/output000/ice/OUTPUT/iceh.1900-01.nc": {
                     "TLAT": {"ni": 1, "nj": 1},
                     "TLON": {"ni": 1, "nj": 1},
                 },
@@ -236,13 +236,11 @@ def test_validate_chunkspec_integer_multiple_warnings(
             {"time": -1, "xt_ocean": 1, "yt_ocean": 1, "nv": 1},
             {"time": -1, "xt_ocean": 1, "yt_ocean": 1, "nv": 2},
             {
-                _here
-                / "data/output000/ocean/ocean_month.nc": {
+                _here / "data/output000/ocean/ocean_month.nc": {
                     "TLAT": {"ni": 1, "nj": 1},
                     "TLON": {"ni": 1, "nj": 1},
                 },
-                _here
-                / "data/output000/ice/OUTPUT/iceh.1900-01.nc": {
+                _here / "data/output000/ice/OUTPUT/iceh.1900-01.nc": {
                     "TLAT": {"ni": 1, "nj": 1},
                     "TLON": {"ni": 1, "nj": 1},
                 },
@@ -252,13 +250,11 @@ def test_validate_chunkspec_integer_multiple_warnings(
             {"time": 50, "xt_ocean": 1, "yt_ocean": 1, "nv": 1},
             {"time": 120, "xt_ocean": 1, "yt_ocean": 1, "nv": 2},
             {
-                _here
-                / "data/output000/ocean/ocean_month.nc": {
+                _here / "data/output000/ocean/ocean_month.nc": {
                     "TLAT": {"ni": 1, "nj": 1},
                     "TLON": {"ni": 1, "nj": 1},
                 },
-                _here
-                / "data/output000/ice/OUTPUT/iceh.1900-01.nc": {
+                _here / "data/output000/ice/OUTPUT/iceh.1900-01.nc": {
                     "TLAT": {"ni": 1, "nj": 1},
                     "TLON": {"ni": 1, "nj": 1},
                 },
@@ -377,3 +373,108 @@ def test_validate_chunkspec_input_types():
             chunkspec=chunks,
             varnames="temp",
         )
+
+
+@pytest.mark.parametrize(
+    "fpath, var",
+    [
+        (str(_here / "data/output000/ocean/ocean_month.nc"), None),
+        (
+            [
+                str(_here / "data/output000/ocean/ocean_month.nc"),
+                str(_here / "data/output001/ocean/ocean_month.nc"),
+            ],
+            None,
+        ),
+    ],
+)
+@pytest.mark.parametrize(
+    "chunkspec, expected",
+    [
+        (
+            {"time": 120, "xt_ocean": 1, "yt_ocean": 1, "nv": 2},
+            {"time": 120, "xt_ocean": 1, "yt_ocean": 1, "nv": 2},
+        ),
+        (
+            {"time": 120, "xt_ocean": 1, "yt_ocean": 1},
+            {"time": 120, "xt_ocean": 1, "yt_ocean": 1},
+        ),
+        (
+            {"time": 120, "xt_ocean": 1},
+            {"time": 120, "xt_ocean": 1},
+        ),
+        (
+            {"time": 120, "xt_ocean": 4},
+            {"time": 120, "xt_ocean": 4},
+        ),
+        (
+            {"time": -1, "xt_ocean": 1, "yt_ocean": 1, "nv": 2},
+            {"time": -1, "xt_ocean": 1, "yt_ocean": 1, "nv": 2},
+        ),
+        (
+            {"time": -1, "xt_ocean": 1, "yt_ocean": 1},
+            {"time": -1, "xt_ocean": 1, "yt_ocean": 1},
+        ),
+        (
+            {"time": -1, "xt_ocean": 1},
+            {"time": -1, "xt_ocean": 1},
+        ),
+        (
+            {"time": -1, "xt_ocean": 4},
+            {"time": -1, "xt_ocean": 4},
+        ),
+    ],
+)
+def test_validate_chunkspec_xr_ds(
+    fpath,
+    chunkspec,
+    var,
+    expected,
+):
+    if isinstance(fpath, list):
+        ds = xr.open_mfdataset(
+            fpath,
+            decode_timedelta=False,
+            engine="netcdf4",
+        )
+    else:
+        ds = xr.open_dataset(fpath, decode_timedelta=False, engine="netcdf4")
+    with warnings.catch_warnings():
+        chunk_dict = validate_chunkspec(
+            dataset=ds,
+            chunkspec=chunkspec,
+            varnames=var,
+        )
+
+    assert chunk_dict == expected
+
+
+@pytest.mark.parametrize(
+    "fpath",
+    [
+        # I don't think the closers trick works with `open_dataset` but that's for later
+        # (str(_here / "data/output000/ocean/ocean_month.nc")),
+        (
+            [
+                str(_here / "data/output000/ocean/ocean_month.nc"),
+                str(_here / "data/output001/ocean/ocean_month.nc"),
+            ]
+        ),
+    ],
+)
+def test__get_file_handles(fpath):
+    if isinstance(fpath, list):
+        ds = xr.open_mfdataset(
+            fpath,
+            decode_timedelta=False,
+            engine="netcdf4",
+        )
+    elif isinstance(fpath, str):
+        ds = xr.open_dataset(fpath, decode_timedelta=False, engine="netcdf4")
+
+    fhandles = _get_file_handles(ds)
+
+    if isinstance(fpath, list):
+        assert fhandles == [Path(f) for f in fpath]
+    else:
+        assert fhandles == [Path(fpath)]
