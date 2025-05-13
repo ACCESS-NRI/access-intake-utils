@@ -83,7 +83,7 @@ parentdir_prefix = "access-intake-utils-"
 omit = ["*/_version.py", "*/data/__init__.py"]
 
 [tool.ruff]
-target-version = "py310"
+target-version = "py39"
 exclude = [
     ".bzr",
     ".direnv",
@@ -104,7 +104,8 @@ exclude = [
     "dist",
     "node_modules",
     "venv",
-    "src/access_intake_utils/_version.py",
+    "versioneer.py",
+    "_version.py",
 ]
 # E402: module level import not at top of file
 # E501: line too long - let black worry about that
