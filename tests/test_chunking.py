@@ -456,18 +456,27 @@ def test_validate_chunkspec_xr_ds(
 
 
 @pytest.mark.parametrize(
-    "fpath",
+    "fpath, varname",
     [
-        (str(_here / "data/output000/ocean/ocean_month.nc")),
+        (str(_here / "data/output000/ocean/ocean_month.nc"), None),
+        (str(_here / "data/output000/ocean/ocean_month.nc"), "mld"),
         (
             [
                 str(_here / "data/output000/ocean/ocean_month.nc"),
                 str(_here / "data/output001/ocean/ocean_month.nc"),
-            ]
+            ],
+            None,
         ),
+        # (
+        #     [
+        #         str(_here / "data/output000/ocean/ocean_month.nc"),
+        #         str(_here / "data/output001/ocean/ocean_month.nc"),
+        #     ],
+        #     "mld",
+        # ),
     ],
 )
-def test__get_file_handles(fpath):
+def test__get_file_handles(fpath, varname):
     if isinstance(fpath, list):
         ds = xr.open_mfdataset(
             fpath,
@@ -476,6 +485,43 @@ def test__get_file_handles(fpath):
         )
     elif isinstance(fpath, str):
         ds = xr.open_dataset(fpath, decode_timedelta=False, engine="netcdf4")
+
+    if varname is not None:
+        ds = ds[varname]
+
+    fhandles = _get_file_handles(ds)
+
+    if isinstance(fpath, list):
+        assert fhandles == [Path(f) for f in fpath]
+    else:
+        assert fhandles == [Path(fpath)]
+
+
+@pytest.mark.xfail(reason="Can we even get all the file handles from a dataarray?")
+@pytest.mark.parametrize(
+    "fpath, varname",
+    [
+        (
+            [
+                str(_here / "data/output000/ocean/ocean_month.nc"),
+                str(_here / "data/output001/ocean/ocean_month.nc"),
+            ],
+            "mld",
+        )
+    ],
+)
+def test__get_file_handles_failing(fpath, varname):
+    if isinstance(fpath, list):
+        ds = xr.open_mfdataset(
+            fpath,
+            decode_timedelta=False,
+            engine="netcdf4",
+        )
+    elif isinstance(fpath, str):
+        ds = xr.open_dataset(fpath, decode_timedelta=False, engine="netcdf4")
+
+    if varname is not None:
+        ds = ds[varname]
 
     fhandles = _get_file_handles(ds)
 
