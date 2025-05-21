@@ -16,6 +16,6 @@ dependencies:
   - numpy
   - ruff
   - tabulate
-  - xarray
+  - xarray[complete]
   - pip:
     - codecov

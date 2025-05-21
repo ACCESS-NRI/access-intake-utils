@@ -3,6 +3,7 @@
 import warnings
 from collections.abc import Iterable
 from enum import Enum
+from functools import partial
 from pathlib import Path
 from random import sample
 from typing import Any, Literal
@@ -158,13 +159,7 @@ def validate_chunkspec(
         case esm_datastore():
             path_list = [Path(f) for f in dataset.unique().path]
         case Dataset() | DataArray():
-            if not dataset.encoding.get("source", False):
-                raise ValueError(
-                    " Dataset/DataArray does contain source attribute describing file path(s)."
-                    " Please provide a dataset with a source attribute, an esm_datastore,"
-                    " or a list of file paths."
-                )
-            path_list = [Path(f) for f in dataset.encoding["source"]]
+            path_list = _get_file_handles(dataset)
         case Iterable() if all(isinstance(f, (str | Path)) for f in dataset):
             path_list = [Path(str(f)) for f in dataset]
         case _:
@@ -258,3 +253,36 @@ def validate_chunkspec(
     suggested_chunks.update(_full_length)
 
     return suggested_chunks
+
+
+def _get_file_handles(dataset: Dataset | DataArray) -> list[Path]:
+    """
+    Get the file handles from a dataset or dataarray.
+
+    Parameters
+    ----------
+    dataset : Dataset | DataArray
+        The dataset or dataarray to get the file handles from.
+
+    Returns
+    -------
+    list[Path]
+        A list of file handles.
+    """
+
+    if encoding_fname := dataset.encoding.get("source", False):
+        # We must have a single file.
+        return [Path(encoding_fname)]
+
+    # If not, we are going to need to extract file handles from the ._close
+    # attribute
+    file_handles: list[Path] = []
+    if isinstance(dataset._close, partial):
+        # Extract the list of bound methods from the partial's arguments
+        bound_methods = dataset._close.args[0]
+        for bound_method in bound_methods:
+            # The bound method is tied to a NetCDF4DataStore object
+            if hasattr(bound_method, "__self__"):
+                file_handles.append(Path(bound_method.__self__._filename))
+
+    return file_handles
