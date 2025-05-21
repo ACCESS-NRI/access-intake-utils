@@ -475,14 +475,11 @@ def test_validate_chunkspec_xr_ds(
     ],
 )
 def test__get_file_handles(fpath, varname):
-    if isinstance(fpath, list):
-        ds = xr.open_mfdataset(
-            fpath,
-            decode_timedelta=False,
-            engine="netcdf4",
-        )
-    elif isinstance(fpath, str):
-        ds = xr.open_dataset(fpath, decode_timedelta=False, engine="netcdf4")
+    ds = xr.open_mfdataset(
+        fpath,
+        decode_timedelta=False,
+        engine="netcdf4",
+    )
 
     if varname is not None:
         ds = ds[varname]
@@ -509,14 +506,11 @@ def test__get_file_handles(fpath, varname):
     ],
 )
 def test__get_file_handles_failing(fpath, varname):
-    if isinstance(fpath, list):
-        ds = xr.open_mfdataset(
-            fpath,
-            decode_timedelta=False,
-            engine="netcdf4",
-        )
-    elif isinstance(fpath, str):
-        ds = xr.open_dataset(fpath, decode_timedelta=False, engine="netcdf4")
+    ds = xr.open_mfdataset(
+        fpath,
+        decode_timedelta=False,
+        engine="netcdf4",
+    )
 
     if varname is not None:
         ds = ds[varname]
